@@ -18,7 +18,9 @@ class StudentLog:
         self.date = normalized_date
         # FIRST validate the raw parameter
         if meal_type not in ("breakfast", "lunch", "dinner"):
-            raise ValueError("Please Choose the correct meal type")
+            raise ValueError(
+                f"Invalid meal_type '{meal_type}'. Allowed values are: breakfast, lunch, dinner."
+            )
         # THEN store it — only reaches here if valid
         self.meal_type = meal_type
         if attended not in (True , False) :

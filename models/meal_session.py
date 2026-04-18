@@ -1,5 +1,5 @@
 class MealSession:
-    def __init__(self, date ,meal_type ,headcount, event_flag ,cooked_qty ):
+    def __init__(self, date, meal_type, headcount, event_flag, cooked_qty):
         
         self.date = date
         if meal_type not in ("breakfast" ,"lunch","dinner"):

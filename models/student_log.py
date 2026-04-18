@@ -3,7 +3,7 @@ import datetime
 
 class StudentLog:
     def __init__(self ,date ,meal_type,attended):
-        self.student_id = str(uuid.uuid4())[:8]
+        self.student_id = uuid.uuid4().hex
         if isinstance(date, datetime.datetime):
             normalized_date = date.date().isoformat()
         elif isinstance(date, datetime.date):
@@ -23,7 +23,7 @@ class StudentLog:
             )
         # THEN store it — only reaches here if valid
         self.meal_type = meal_type
-        if attended not in (True , False) :
+        if not isinstance(attended, bool):
             raise ValueError ("Attended is not valid") 
         self.attended = attended
 

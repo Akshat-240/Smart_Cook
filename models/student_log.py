@@ -1,9 +1,21 @@
 import uuid
+import datetime
 
 class StudentLog:
     def __init__(self ,date ,meal_type,attended):
         self.student_id = str(uuid.uuid4())[:8]
-        self.date = date
+        if isinstance(date, datetime.datetime):
+            normalized_date = date.date().isoformat()
+        elif isinstance(date, datetime.date):
+            normalized_date = date.isoformat()
+        elif isinstance(date, str):
+            try:
+                normalized_date = datetime.date.fromisoformat(date).isoformat()
+            except ValueError:
+                raise ValueError("date must be a valid ISO YYYY-MM-DD string") from None
+        else:
+            raise TypeError("date must be a datetime.date, datetime.datetime, or ISO YYYY-MM-DD string")
+        self.date = normalized_date
         # FIRST validate the raw parameter
         if meal_type not in ("breakfast", "lunch", "dinner"):
             raise ValueError("Please Choose the correct meal type")

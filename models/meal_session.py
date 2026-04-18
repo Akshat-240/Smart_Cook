@@ -8,7 +8,13 @@ class MealSession:
         if headcount < 0 :
             raise ValueError ("Headcount cannot be negative") 
         self.headcount = headcount
+        if not isinstance(event_flag, bool):
+            raise ValueError("event_flag must be a boolean")
         self.event_flag = event_flag
+        if isinstance(cooked_qty, bool) or not isinstance(cooked_qty, (int, float)):
+            raise ValueError("cooked_qty must be a non-negative number")
+        if cooked_qty < 0:
+            raise ValueError("cooked_qty cannot be negative")
         self.cooked_qty = cooked_qty
     
     def __repr__(self):

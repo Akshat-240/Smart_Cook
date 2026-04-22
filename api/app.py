@@ -1,9 +1,3 @@
-"""
-SmartCook — Flask REST API
-Backend-only. Prediction is delegated to an external ML service.
-Run with: python api/app.py
-"""
-
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -69,32 +63,12 @@ def parse_event(s) -> EventFlag | None:
     except (ValueError, TypeError):
         return None
 
-
-# ── Health ─────────────────────────────────────────────────────────────────────
-
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"})
 
-
-# ── Cooking Plan ───────────────────────────────────────────────────────────────
-
 @app.post("/cooking-plan")
 def cooking_plan():
-    """
-    POST /cooking-plan
-    The ML service calls this with its prediction; the backend validates,
-    enriches with calendar context, and returns a warden-ready CookingPlan.
-
-    Body:
-    {
-      "date":                "YYYY-MM-DD",
-      "meal_type":           "Dinner",
-      "predicted_headcount": 342,
-      "confidence_low":      320,   ← optional
-      "confidence_high":     365    ← optional
-    }
-    """
     data = request.get_json(silent=True)
     if not data:
         return err("JSON body required")
@@ -138,11 +112,6 @@ def cooking_plan():
 
 @app.get("/cooking-plan/tomorrow")
 def cooking_plan_tomorrow():
-    """
-    GET /cooking-plan/tomorrow
-    Returns calendar context for tomorrow's 3 meals so the ML service
-    knows which event flags to apply when generating predictions.
-    """
     tomorrow = date.today() + timedelta(days=1)
     event_flag = detect_event(tomorrow)
     return jsonify({
@@ -158,24 +127,9 @@ def cooking_plan_tomorrow():
         "upcoming_events": upcoming_events(days=3),
     })
 
-
-# ── Attendance Logging ─────────────────────────────────────────────────────────
-
 @app.post("/logs")
 def add_log():
-    """
-    POST /logs
-    Staff record actual headcount after each meal.
 
-    Body:
-    {
-      "date":             "YYYY-MM-DD",
-      "meal_type":        "Dinner",
-      "actual_headcount": 340,
-      "cooked_for":       400,
-      "event_flag":       "none"   ← optional, auto-detected if omitted
-    }
-    """
     data = request.get_json(silent=True)
     if not data:
         return err("JSON body required")
@@ -214,10 +168,6 @@ def add_log():
 
 @app.get("/logs")
 def get_logs():
-    """
-    GET /logs?from=YYYY-MM-DD&to=YYYY-MM-DD&meal=Dinner
-    All filters optional.
-    """
     logs = load_all_logs()
 
     if raw := request.args.get("from"):

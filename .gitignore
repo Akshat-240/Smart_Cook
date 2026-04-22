@@ -1,0 +1,53 @@
+# 🔥 Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 🔥 Virtual environments
+venv/
+env/
+.venv/
+
+# 🔥 Environment variables
+.env
+.env.*
+
+# 🔥 Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# 🔥 VS Code settings
+.vscode/
+
+# 🔥 OS files
+.DS_Store
+Thumbs.db
+
+# 🔥 Logs
+*.log
+
+# 🔥 Model files (important for ML projects)
+*.pkl
+*.joblib
+*.h5
+*.pt
+
+# 🔥 Data files (avoid pushing large datasets)
+data/
+*.csv
+*.xlsx
+
+# 🔥 Build / dist
+build/
+dist/
+*.egg-info/
+
+# 🔥 Test cache
+.pytest_cache/
+
+# 🔥 Coverage
+.coverage
+htmlcov/
+
+# 🔥 Temporary files
+*.tmp
+*.swp

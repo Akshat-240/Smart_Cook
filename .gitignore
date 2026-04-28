@@ -43,11 +43,18 @@ dist/
 
 # 🔥 Test cache
 .pytest_cache/
+.pytest_tmp/
+.pytest_tmp_local/
+pytest-cache-files-*/
 
 # 🔥 Coverage
 .coverage
 htmlcov/
 
 # 🔥 Temporary files
+.tmp/
 *.tmp
 *.swp
+
+# 🔥 Generated model reports
+model/evaluation.txt

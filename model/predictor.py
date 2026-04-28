@@ -13,15 +13,19 @@ from utils.calendar_intel import is_exam_period, is_festival
 MODEL_PATH  = Path(__file__).parent / "smartcook_model.pkl"
 SCALER_PATH = Path(__file__).parent / "smartcook_scaler.pkl"
 
-# Meal encoding - matches features.py
-MEAL_ENCODING = {"Breakfast": 0, "Lunch": 1, "Dinner": 2}
+# Keep meal ordering in one place so feature encoding cannot drift from
+# the meal definitions used by this predictor.
+MEAL_TYPES = ("Breakfast", "Lunch", "Dinner")
 
-# Portion ratios (kg per student) - matches Aryan's data_models.py
+# Portion ratios (kg per student)
 PORTION_RATIOS = {
     "Breakfast": {"Poha/Upma": 0.15, "Milk": 0.25, "Bread": 0.10},
     "Lunch":     {"Rice": 0.20, "Dal": 0.13, "Sabzi": 0.11, "Roti": 0.08},
     "Dinner":    {"Rice": 0.20, "Dal": 0.13, "Sabzi": 0.11, "Roti": 0.08},
 }
+
+# Derive encoding from the single ordered meal definition above.
+MEAL_ENCODING = {meal: index for index, meal in enumerate(MEAL_TYPES)}
 
 COST_PER_PORTION_INR = 60
 

@@ -15,6 +15,16 @@ def load_mess_data(filepath=None):
     """
     if filepath is None:
         filepath = DATA_PATH
+    else:
+        filepath = Path(filepath)
+
+    if not filepath.exists():
+        raise FileNotFoundError(
+            "Training data CSV not found at '{}'. "
+            "Place/download 'smartcook_training_data.csv' in the project's "
+            "'data/' directory, or pass a custom CSV path to "
+            "load_mess_data(filepath=...).".format(filepath)
+        )
 
     df = pd.read_csv(filepath)
 

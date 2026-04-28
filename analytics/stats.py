@@ -55,17 +55,18 @@ def compute_waste_stats(df):
     total_cooked = int(df["actual_cooked_for"].sum())
     total_actual = int(df["headcount_actual"].sum())
     total_wasted = int(df["food_wasted_portions"].sum())
+    total_sessions = len(df)
     waste_pct    = round((total_wasted / total_cooked) * 100, 2) if total_cooked else 0.0
     money_wasted = total_wasted * 60  # Rs 60 per portion
 
     return {
-        "total_sessions":          len(df),
+        "total_sessions":          total_sessions,
         "total_cooked":            total_cooked,
         "total_actual":            total_actual,
         "total_wasted":            total_wasted,
         "overall_waste_pct":       waste_pct,
         "money_wasted_inr":        money_wasted,
-        "avg_waste_per_session":   round(total_wasted / len(df), 1),
+        "avg_waste_per_session":   round(total_wasted / total_sessions, 1) if total_sessions else 0.0,
     }
 
 

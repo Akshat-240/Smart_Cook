@@ -5,6 +5,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from datetime import date, timedelta
 from flask import Flask, jsonify, request
 
+from model.predictor import predict as predict_headcount
 from models.data_models import CookingPlan, EventFlag, MealType, StudentLog, PORTION_RATIOS
 from utils.calendar_intel import detect_event, upcoming_events
 from utils.storage import (
@@ -24,7 +25,7 @@ def index():
         "status":  "running",
         "endpoints": {
             "health":           "GET  /health",
-            "cooking_plan":     "POST /cooking-plan",
+            "cooking_plan":     "POST /cooking-plan  {date, meal_type}",
             "cooking_tomorrow": "GET  /cooking-plan/tomorrow",
             "logs_create":      "POST /logs",
             "logs_read":        "GET  /logs?from=&to=&meal=",
@@ -73,7 +74,7 @@ def cooking_plan():
     if not data:
         return err("JSON body required")
 
-    for field_name in ("date", "meal_type", "predicted_headcount"):
+    for field_name in ("date", "meal_type"):
         if field_name not in data:
             return err(f"Missing field: '{field_name}'")
 
@@ -86,25 +87,23 @@ def cooking_plan():
         return err(f"Invalid meal_type: '{data['meal_type']}'. Use Breakfast, Lunch, or Dinner.")
 
     try:
-        headcount = int(data["predicted_headcount"])
-    except (ValueError, TypeError):
-        return err("predicted_headcount must be an integer")
-
-    if headcount < 1:
-        return err("predicted_headcount must be >= 1")
-
-    conf_low  = data.get("confidence_low")
-    conf_high = data.get("confidence_high")
+        prediction = predict_headcount(session_date, meal.value)
+    except ValueError as exc:
+        return err(str(exc))
+    except FileNotFoundError as exc:
+        return err(str(exc), 503)
+    except Exception:
+        return err("Prediction service failed", 500)
 
     event_flag = detect_event(session_date)
 
     plan = CookingPlan(
         session_date        = session_date,
         meal_type           = meal,
-        predicted_headcount = headcount,
+        predicted_headcount = prediction["predicted_headcount"],
         event_flag          = event_flag,
-        confidence_low      = int(conf_low)  if conf_low  is not None else None,
-        confidence_high     = int(conf_high) if conf_high is not None else None,
+        confidence_low      = prediction.get("confidence_low"),
+        confidence_high     = prediction.get("confidence_high"),
     )
 
     return jsonify(plan.to_dict()), 200

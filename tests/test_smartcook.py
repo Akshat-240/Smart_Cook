@@ -162,7 +162,29 @@ class TestFlaskAPI:
         import utils.storage as storage
         monkeypatch.setattr(storage, "ATTENDANCE_FILE", tmp_path / "attendance.csv")
         storage._ensure_file()
-        from api.app import app
+        import api.app as app_module
+
+        def fake_predict(target_date, meal_type):
+            lookup = {
+                "Breakfast": (150, 135, 165),
+                "Lunch": (180, 162, 198),
+                "Dinner": (342, 320, 365),
+            }
+            headcount, low, high = lookup[meal_type]
+            return {
+                "date": target_date.isoformat(),
+                "meal_type": meal_type,
+                "day_of_week": target_date.strftime("%A"),
+                "event_flags": {},
+                "predicted_headcount": headcount,
+                "confidence_low": low,
+                "confidence_high": high,
+                "cooking_quantities_kg": {},
+                "potential_waste_inr": (high - headcount) * 60,
+            }
+
+        monkeypatch.setattr(app_module, "predict_headcount", fake_predict)
+        app = app_module.app
         app.config["TESTING"] = True
         self.client = app.test_client()
 
@@ -176,9 +198,6 @@ class TestFlaskAPI:
         r = self.client.post("/cooking-plan", json={
             "date": "2026-06-10",
             "meal_type": "Dinner",
-            "predicted_headcount": 342,
-            "confidence_low": 320,
-            "confidence_high": 365,
         })
         assert r.status_code == 200
         data = r.get_json()
@@ -191,7 +210,6 @@ class TestFlaskAPI:
         r = self.client.post("/cooking-plan", json={
             "date": "2025-10-21",   # Diwali
             "meal_type": "Lunch",
-            "predicted_headcount": 180,
         })
         assert r.status_code == 200
         assert r.get_json()["event_flag"] == "festival"
@@ -199,18 +217,22 @@ class TestFlaskAPI:
     def test_cooking_plan_missing_field(self):
         r = self.client.post("/cooking-plan", json={
             "date": "2026-06-10",
-            "meal_type": "Dinner",
-            # missing predicted_headcount
+            # missing meal_type
         })
         assert r.status_code == 400
 
-    def test_cooking_plan_invalid_headcount(self):
+    def test_cooking_plan_predictor_unavailable(self, monkeypatch):
+        import api.app as app_module
+
+        def broken_predict(*_args, **_kwargs):
+            raise FileNotFoundError("Model artifacts not found. Run model/train_model.py first.")
+
+        monkeypatch.setattr(app_module, "predict_headcount", broken_predict)
         r = self.client.post("/cooking-plan", json={
             "date": "2026-06-10",
             "meal_type": "Lunch",
-            "predicted_headcount": 0,
         })
-        assert r.status_code == 400
+        assert r.status_code == 503
 
     def test_cooking_plan_tomorrow(self):
         r = self.client.get("/cooking-plan/tomorrow")

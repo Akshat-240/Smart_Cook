@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartCook — Prediction History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-brand">
+        <span class="nav-icon">🍽</span>
+        <span class="nav-title">SmartCook</span>
+      </div>
+      <div class="nav-right">
+        <a href="index.html" class="nav-link">← Dashboard</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container">
+
+    <div class="page-header">
+      <h1 class="page-title">Prediction History</h1>
+      <p class="page-sub">Track how well the model has been performing</p>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="history-stats">
+      <div class="hstat-card">
+        <div class="hstat-label">Sessions logged</div>
+        <div class="hstat-val" id="hSessions">8</div>
+      </div>
+      <div class="hstat-card hstat-green">
+        <div class="hstat-label">Avg waste</div>
+        <div class="hstat-val" id="hAvgWaste">11.73%</div>
+      </div>
+      <div class="hstat-card hstat-green">
+        <div class="hstat-label">Total wasted</div>
+        <div class="hstat-val" id="hMoneyWasted">₹10,380</div>
+      </div>
+      <div class="hstat-card">
+        <div class="hstat-label">Best day waste</div>
+        <div class="hstat-val" id="hBestDay">4.21%</div>
+      </div>
+    </div>
+
+    <!-- Waste breakdown mini chart -->
+    <div class="section-header">
+      <h2 class="section-title">Waste % over time</h2>
+    </div>
+    <div class="chart-card" style="margin-bottom:24px;">
+      <canvas id="historyChart" height="160"></canvas>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label class="filter-label">From</label>
+        <input type="date" class="filter-input" id="filterFrom">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">To</label>
+        <input type="date" class="filter-input" id="filterTo">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Meal</label>
+        <select class="filter-select" id="filterMeal">
+          <option value="all">All meals</option>
+          <option value="breakfast">Breakfast</option>
+          <option value="lunch">Lunch</option>
+          <option value="dinner">Dinner</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Event</label>
+        <select class="filter-select" id="filterEvent">
+          <option value="all">All events</option>
+          <option value="none">None</option>
+          <option value="weekend">Weekend</option>
+          <option value="festival">Festival</option>
+          <option value="exam">Exam</option>
+        </select>
+      </div>
+      <button class="apply-btn" onclick="applyFilters()">Apply</button>
+      <button class="reset-btn" onclick="resetFilters()">Reset</button>
+    </div>
+
+    <div class="record-count" id="recordCount">Showing 8 records</div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable('date')" class="sortable">Date <span class="sort-icon">↕</span></th>
+            <th>Meal</th>
+            <th onclick="sortTable('actual')" class="sortable">Actual <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('cooked')" class="sortable">Cooked for <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('wasted')" class="sortable">Wasted <span class="sort-icon">↕</span></th>
+            <th onclick="sortTable('wastePct')" class="sortable">Waste % <span class="sort-icon">↕</span></th>
+            <th>Event</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Export -->
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="../static/js/history.js"></script>
+</body>
+</html>

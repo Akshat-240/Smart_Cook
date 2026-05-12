@@ -3,7 +3,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from datetime import date, timedelta
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 
 from model.predictor import predict as predict_headcount
 from models.data_models import CookingPlan, EventFlag, MealType, StudentLog, PORTION_RATIOS
@@ -13,13 +13,29 @@ from utils.storage import (
     get_waste_graph_data, load_all_logs, log_exists,
 )
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).parent.parent
+
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 
 
 # ── Index ──────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def index():
+    return render_template("index.html")
+
+
+@app.get("/history")
+def history():
+    return render_template("history.html")
+
+
+@app.get("/api")
+def api_index():
     return jsonify({
         "project": "SmartCook — Campus Mess Food Waste Predictor",
         "status":  "running",
@@ -64,6 +80,21 @@ def parse_event(s) -> EventFlag | None:
     except (ValueError, TypeError):
         return None
 
+
+def build_cooking_plan_response(session_date: date, meal: MealType) -> dict:
+    prediction = predict_headcount(session_date, meal.value)
+    event_flag = detect_event(session_date)
+
+    plan = CookingPlan(
+        session_date        = session_date,
+        meal_type           = meal,
+        predicted_headcount = prediction["predicted_headcount"],
+        event_flag          = event_flag,
+        confidence_low      = prediction.get("confidence_low"),
+        confidence_high     = prediction.get("confidence_high"),
+    )
+    return plan.to_dict()
+
 @app.get("/health")
 def health():
     return jsonify({"status": "ok"})
@@ -87,7 +118,7 @@ def cooking_plan():
         return err(f"Invalid meal_type: '{data['meal_type']}'. Use Breakfast, Lunch, or Dinner.")
 
     try:
-        prediction = predict_headcount(session_date, meal.value)
+        return jsonify(build_cooking_plan_response(session_date, meal)), 200
     except ValueError as exc:
         return err(str(exc))
     except FileNotFoundError as exc:
@@ -95,18 +126,34 @@ def cooking_plan():
     except Exception:
         return err("Prediction service failed", 500)
 
-    event_flag = detect_event(session_date)
 
-    plan = CookingPlan(
-        session_date        = session_date,
-        meal_type           = meal,
-        predicted_headcount = prediction["predicted_headcount"],
-        event_flag          = event_flag,
-        confidence_low      = prediction.get("confidence_low"),
-        confidence_high     = prediction.get("confidence_high"),
-    )
+@app.route("/predict", methods=["GET", "POST"])
+def predict():
+    """Live prediction endpoint for the integrated frontend."""
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        raw_date = data.get("date")
+        raw_meal = data.get("meal_type") or data.get("meal")
+    else:
+        raw_date = request.args.get("date")
+        raw_meal = request.args.get("meal_type") or request.args.get("meal")
 
-    return jsonify(plan.to_dict()), 200
+    session_date = parse_date(raw_date)
+    if not session_date:
+        return err("`date` is required in YYYY-MM-DD format")
+
+    meal = parse_meal(raw_meal)
+    if not meal:
+        return err("`meal` must be Breakfast, Lunch, or Dinner")
+
+    try:
+        return jsonify(build_cooking_plan_response(session_date, meal)), 200
+    except ValueError as exc:
+        return err(str(exc))
+    except FileNotFoundError as exc:
+        return err(str(exc), 503)
+    except Exception:
+        return err("Prediction service failed", 500)
 
 
 @app.get("/cooking-plan/tomorrow")
@@ -241,4 +288,4 @@ def calendar_detect():
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)

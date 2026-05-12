@@ -600,6 +600,104 @@
             border-color: var(--g700)
         }
 
+        /* ── LIVE OPERATOR FORM ── */
+        .ops-card {
+            background: var(--white);
+            border-radius: var(--r18);
+            padding: 20px 22px;
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+            animation: fadeUp .5s .23s ease both
+        }
+
+        .ops-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr 1fr;
+            gap: 12px;
+            align-items: end
+        }
+
+        .ops-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+
+        .ops-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: var(--gray5)
+        }
+
+        .ops-input,
+        .ops-select {
+            border: 1.5px solid transparent;
+            background: var(--gray1);
+            color: var(--gray9);
+            border-radius: var(--r8);
+            padding: 10px 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            outline: none
+        }
+
+        .ops-input:focus,
+        .ops-select:focus {
+            border-color: var(--g600);
+            background: #fff
+        }
+
+        .ops-actions {
+            display: flex;
+            gap: 8px;
+            align-items: end
+        }
+
+        .ops-btn {
+            border: none;
+            border-radius: var(--r8);
+            padding: 11px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap
+        }
+
+        .ops-btn.primary {
+            background: var(--g800);
+            color: #fff
+        }
+
+        .ops-btn.secondary {
+            background: var(--g50);
+            color: var(--g700);
+            border: 1px solid var(--g200)
+        }
+
+        .ops-btn:disabled {
+            opacity: .55;
+            cursor: wait
+        }
+
+        .ops-status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--gray5)
+        }
+
+        .ops-status.ok {
+            color: var(--g700);
+            font-weight: 600
+        }
+
+        .ops-status.err {
+            color: var(--redd);
+            font-weight: 600
+        }
+
         /* ── MINI TABLE ── */
         .mini-wrap {
             background: var(--white);
@@ -803,12 +901,31 @@
                 gap: 10px
             }
 
+            .ops-grid {
+                grid-template-columns: 1fr 1fr
+            }
+
+            .ops-actions {
+                grid-column: 1 / -1
+            }
+
             .hero-num {
                 font-size: 60px
             }
 
             .meal-sw {
                 display: none
+            }
+        }
+
+        @media(max-width:520px) {
+            .ops-grid {
+                grid-template-columns: 1fr
+            }
+
+            .ops-actions {
+                flex-direction: column;
+                align-items: stretch
             }
         }
     </style>
@@ -945,6 +1062,52 @@
             <div class="risk-tip" id="rTip">Normal weekday — steady attendance expected.</div>
         </div>
 
+        <!-- LIVE PREDICT + LOG -->
+        <div class="ops-card">
+            <div class="qty-hdr" style="margin-top:0">
+                <div class="sec-title">Predict + log attendance</div>
+                <div class="sec-badge" id="opsBadge">Live Flask API</div>
+            </div>
+            <div class="ops-grid">
+                <div class="ops-field">
+                    <label class="ops-label" for="opsDate">Meal date</label>
+                    <input class="ops-input" type="date" id="opsDate">
+                </div>
+                <div class="ops-field">
+                    <label class="ops-label" for="opsMeal">Meal</label>
+                    <select class="ops-select" id="opsMeal">
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch" selected>Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                    </select>
+                </div>
+                <div class="ops-field">
+                    <label class="ops-label" for="opsActual">Actual headcount</label>
+                    <input class="ops-input" type="number" min="0" id="opsActual" placeholder="e.g. 180">
+                </div>
+                <div class="ops-field">
+                    <label class="ops-label" for="opsCooked">Cooked for</label>
+                    <input class="ops-input" type="number" min="0" id="opsCooked" placeholder="auto from prediction">
+                </div>
+                <div class="ops-field">
+                    <label class="ops-label" for="opsEvent">Event override</label>
+                    <select class="ops-select" id="opsEvent">
+                        <option value="">Auto detect</option>
+                        <option value="none">None</option>
+                        <option value="weekend">Weekend</option>
+                        <option value="festival">Festival</option>
+                        <option value="exam">Exam</option>
+                        <option value="holiday">Holiday</option>
+                    </select>
+                </div>
+                <div class="ops-actions">
+                    <button class="ops-btn primary" id="opsPredict" type="button">Predict</button>
+                    <button class="ops-btn secondary" id="opsSave" type="button">Save log</button>
+                </div>
+            </div>
+            <div class="ops-status" id="opsStatus">Choose a date and meal, run prediction, then save actual attendance.</div>
+        </div>
+
         <!-- CHART -->
         <div class="chart-hdr">
             <div class="sec-title">Actual vs Optimal</div>
@@ -998,17 +1161,193 @@
         ];
 
         let chart = null, curMeal = 'lunch';
+        let latestPrediction = null;
+
+        function tomorrowISO() {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function targetDateISO() {
+            return document.getElementById('opsDate')?.value || tomorrowISO();
+        }
+
+        function setStatus(message, kind = '') {
+            const el = document.getElementById('opsStatus');
+            if (!el) return;
+            el.textContent = message;
+            el.className = `ops-status ${kind}`.trim();
+        }
+
+        function mealKey(mealName) {
+            return mealName.toLowerCase();
+        }
+
+        function fallbackPrediction(meal) {
+            return DATA[meal];
+        }
+
+        function dashboardModel(apiData, meal) {
+            const fallback = fallbackPrediction(meal);
+            const qty = apiData.cooking_quantities || {};
+            const confidence = apiData.confidence_interval || {};
+            const low = confidence.low || Math.round(apiData.predicted_headcount * 0.9);
+            const high = confidence.high || Math.round(apiData.predicted_headcount * 1.1);
+            const riskPct = Math.min(100, Math.max(8, Math.round(((high - low) / Math.max(apiData.predicted_headcount, 1)) * 100)));
+            const riskLabel = riskPct > 35 ? 'High' : riskPct > 22 ? 'Medium' : 'Low';
+            return {
+                hc: apiData.predicted_headcount,
+                meal: apiData.meal_type,
+                sub: `${apiData.date} · ${apiData.event_flag === 'none' ? 'No special events' : apiData.event_flag + ' day'}`,
+                rice: qty.Rice !== undefined ? `${qty.Rice} kg` : (qty['Poha/Upma'] !== undefined ? `${qty['Poha/Upma']} kg poha/upma` : fallback.rice),
+                dal: qty.Dal !== undefined ? `${qty.Dal} L` : (qty.Milk !== undefined ? `${qty.Milk} L milk` : fallback.dal),
+                roti: qty.Roti !== undefined ? `${Math.round(qty.Roti * 12.5)} pcs` : (qty.Bread !== undefined ? `${qty.Bread} kg bread` : fallback.roti),
+                sabzi: qty.Sabzi !== undefined ? `${qty.Sabzi} kg` : fallback.sabzi,
+                sav: fallback.sav,
+                avg7: apiData.predicted_headcount,
+                vy: 0,
+                event: apiData.event_flag === 'none' ? null : apiData.event_flag,
+                riskP: riskPct,
+                riskL: riskLabel,
+                riskT: `Live model confidence range: ${low}–${high} students.`
+            };
+        }
+
+        function selectedEventOverride() {
+            const field = document.getElementById('eventOverride')
+                || document.querySelector('[name="event_override"]')
+                || document.querySelector('[name="eventOverride"]')
+                || document.querySelector('select[aria-label="Event override"]');
+            if (!field) return '';
+
+            const value = String(field.value || '').trim();
+            if (!value) return '';
+
+            const normalized = value.toLowerCase();
+            if (normalized === 'auto' || normalized === 'default' || normalized === 'none') {
+                return '';
+            }
+
+            return value;
+        }
+
+        async function fetchPrediction(meal) {
+            const mealName = meal[0].toUpperCase() + meal.slice(1);
+            const params = new URLSearchParams({
+                date: targetDateISO(),
+                meal: mealName
+            });
+            const eventOverride = selectedEventOverride();
+            if (eventOverride) {
+                params.set('event_override', eventOverride);
+            }
+            const res = await fetch(`/predict?${params.toString()}`);
+            if (!res.ok) throw new Error(`Prediction failed: ${res.status}`);
+            const data = await res.json();
+            latestPrediction = data;
+            return dashboardModel(data, meal);
+        }
+
+        async function refreshSavings() {
+            try {
+                const res = await fetch('/analytics/savings');
+                if (!res.ok) return;
+                const data = await res.json();
+                document.getElementById('sSav').textContent = `₹${Number(data.money_wasted_inr || 0).toLocaleString('en-IN')}`;
+            } catch (_) {}
+        }
+
+        async function refreshChart() {
+            try {
+                const res = await fetch('/analytics/waste-graph');
+                if (!res.ok) return;
+                const payload = await res.json();
+                const series = (payload.series || []).slice(-14);
+                if (!series.length) return;
+                const chartData = {
+                    labels: series.map(r => new Date(r.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })),
+                    actual: series.map(r => r.actual_cooked_kg),
+                    opt: series.map(r => r.optimal_required_kg)
+                };
+                buildChart(chartData);
+            } catch (_) {}
+        }
+
+        async function runOperatorPrediction() {
+            const mealName = document.getElementById('opsMeal').value;
+            const key = mealKey(mealName);
+            setStatus('Running live prediction...');
+            await update(key);
+            if (latestPrediction) {
+                document.getElementById('opsCooked').value = latestPrediction.predicted_headcount;
+                setStatus(`Prediction ready: cook for ${latestPrediction.predicted_headcount} students.`, 'ok');
+            }
+        }
+
+        async function saveAttendanceLog() {
+            const mealName = document.getElementById('opsMeal').value;
+            const actual = Number(document.getElementById('opsActual').value);
+            const cookedRaw = document.getElementById('opsCooked').value;
+            const cooked = Number(cookedRaw || latestPrediction?.predicted_headcount || 0);
+            const dateValue = targetDateISO();
+            const eventValue = document.getElementById('opsEvent').value;
+
+            if (!dateValue || !Number.isFinite(actual) || actual < 0 || !Number.isFinite(cooked) || cooked < 0) {
+                setStatus('Enter valid actual and cooked headcounts before saving.', 'err');
+                return;
+            }
+
+            const payload = {
+                date: dateValue,
+                meal_type: mealName,
+                actual_headcount: actual,
+                cooked_for: cooked
+            };
+            if (eventValue) payload.event_flag = eventValue;
+
+            setStatus('Saving attendance log...');
+            const res = await fetch('/logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                setStatus(data.error || `Save failed with ${res.status}`, 'err');
+                return;
+            }
+
+            setStatus('Log saved. Dashboard, chart, and history are refreshed.', 'ok');
+            await buildMiniTable();
+            await refreshSavings();
+            await refreshChart();
+        }
 
         /* ── INIT ── */
         window.addEventListener('DOMContentLoaded', () => {
             const d = new Date();
             document.getElementById('ctxDate').textContent = d.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('opsDate').value = tomorrowISO();
             update('lunch');
             buildChart(D7);
             buildMiniTable();
+            refreshChart();
+            document.getElementById('opsPredict').addEventListener('click', runOperatorPrediction);
+            document.getElementById('opsSave').addEventListener('click', saveAttendanceLog);
+            document.getElementById('opsMeal').addEventListener('change', e => {
+                const key = mealKey(e.target.value);
+                document.querySelectorAll('.mbtn').forEach(x => x.classList.toggle('on', x.dataset.meal === key));
+                update(key);
+            });
             document.querySelectorAll('.mbtn').forEach(b => b.addEventListener('click', () => {
                 document.querySelectorAll('.mbtn').forEach(x => x.classList.remove('on'));
-                b.classList.add('on'); update(b.dataset.meal);
+                b.classList.add('on');
+                document.getElementById('opsMeal').value = b.dataset.meal[0].toUpperCase() + b.dataset.meal.slice(1);
+                update(b.dataset.meal);
             }));
             document.querySelectorAll('.ctbtn').forEach(b => b.addEventListener('click', () => {
                 document.querySelectorAll('.ctbtn').forEach(x => x.classList.remove('on'));
@@ -1017,8 +1356,13 @@
         });
 
         /* ── UPDATE DASHBOARD ── */
-        function update(meal) {
-            const d = DATA[meal]; curMeal = meal;
+        async function update(meal) {
+            let d = DATA[meal]; curMeal = meal;
+            try {
+                d = await fetchPrediction(meal);
+            } catch (_) {
+                d = fallbackPrediction(meal);
+            }
             countUp('heroNum', parseInt(document.getElementById('heroNum').textContent) || 0, d.hc);
             document.getElementById('heroMeal').textContent = d.meal;
             document.getElementById('heroSub').textContent = d.sub;
@@ -1047,6 +1391,7 @@
                 document.getElementById('evBanner').classList.remove('hide');
             }
             document.getElementById('ctxPill').textContent = d.event ? (d.event[0].toUpperCase() + d.event.slice(1) + ' day') : 'Normal day';
+            refreshSavings();
         }
 
         /* ── ANIMATED COUNTER ── */
@@ -1096,8 +1441,27 @@
         }
 
         /* ── MINI TABLE ── */
-        function buildMiniTable() {
-            document.getElementById('miniTbody').innerHTML = ROWS.map(r => `
+        async function buildMiniTable() {
+            let rows = ROWS;
+            try {
+                const res = await fetch('/logs');
+                if (res.ok) {
+                    const payload = await res.json();
+                    const logs = (payload.logs || []).slice(-6).reverse();
+                    if (logs.length) {
+                        rows = logs.map(l => ({
+                            date: new Date(l.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(l.date).getDay()],
+                            meal: l.meal_type.toLowerCase(),
+                            pred: l.cooked_for,
+                            act: l.actual_headcount,
+                            wp: l.waste_percentage,
+                            ev: l.event_flag
+                        }));
+                    }
+                }
+            } catch (_) {}
+            document.getElementById('miniTbody').innerHTML = rows.map(r => `
     <tr>
       <td><strong>${r.date}</strong> <span style="font-size:11px;color:#999">${r.day}</span></td>
       <td><span class="badge b-${r.meal}">${r.meal[0].toUpperCase() + r.meal.slice(1)}</span></td>

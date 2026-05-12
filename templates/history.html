@@ -179,7 +179,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--gray9);-w
 </div>
 
 <script>
-const ALL=[
+let ALL=[
   {date:'27 Apr 2026',day:'Mon',meal:'lunch',    actual:182,cooked:190,wasted:8, wp:4.21, ev:'none'},
   {date:'26 Apr 2026',day:'Sun',meal:'lunch',    actual:110,cooked:140,wasted:30,wp:21.43,ev:'weekend'},
   {date:'25 Apr 2026',day:'Sat',meal:'lunch',    actual:120,cooked:150,wasted:30,wp:20.00,ev:'weekend'},
@@ -192,12 +192,42 @@ const ALL=[
 
 let fil=[...ALL],sortK='date',sortA=false,hc=null;
 
-window.addEventListener('DOMContentLoaded',()=>{updateStats();renderTable();buildChart();});
+window.addEventListener('DOMContentLoaded',()=>{loadLiveLogs();updateStats();renderTable();buildChart();});
+
+function displayDate(isoDate){
+  return new Date(isoDate).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function displayDay(isoDate){
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(isoDate).getDay()];
+}
+
+async function loadLiveLogs(){
+  try{
+    const res=await fetch('/logs');
+    if(!res.ok)return;
+    const payload=await res.json();
+    const logs=payload.logs||[];
+    if(!logs.length)return;
+    ALL=logs.map(l=>({
+      date:displayDate(l.date),
+      day:displayDay(l.date),
+      meal:l.meal_type.toLowerCase(),
+      actual:l.actual_headcount,
+      cooked:l.cooked_for,
+      wasted:l.waste_headcount,
+      wp:l.waste_percentage,
+      ev:l.event_flag
+    }));
+    fil=[...ALL];
+    updateStats();renderTable();updateChart();
+  }catch(_){}
+}
 
 function updateStats(){
   const n=fil.length;
   const avg=fil.reduce((s,r)=>s+r.wp,0)/(n||1);
-  const money=fil.reduce((s,r)=>s+r.wasted,0)*346;
+  const money=fil.reduce((s,r)=>s+r.wasted,0)*60;
   const best=n?Math.min(...fil.map(r=>r.wp)):0;
   document.getElementById('hSess').textContent=n;
   document.getElementById('hAvg').textContent=avg.toFixed(2)+'%';

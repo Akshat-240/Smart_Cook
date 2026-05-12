@@ -30,9 +30,13 @@ Thumbs.db
 *.joblib
 *.h5
 *.pt
+!model/smartcook_model.pkl
+!model/smartcook_scaler.pkl
 
 # 🔥 Data files (avoid pushing large datasets)
 data/
+runtime_data/
+logs/
 *.csv
 *.xlsx
 
@@ -45,6 +49,10 @@ dist/
 .pytest_cache/
 .pytest_tmp/
 .pytest_tmp_local/
+pytest_work/
+.test_tmp_files/
+.tmp_pytest_run/
+pytest_manual_py/
 pytest-cache-files-*/
 
 # 🔥 Coverage

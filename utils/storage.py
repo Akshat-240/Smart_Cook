@@ -11,6 +11,8 @@ from models.data_models import EventFlag, MealType, StudentLog
 
 DATA_DIR        = Path(__file__).parent.parent / "data"
 ATTENDANCE_FILE = DATA_DIR / "mess_attendance.csv"
+FALLBACK_DATA_DIR = Path(__file__).parent.parent / "runtime_data"
+FALLBACK_ATTENDANCE_FILE = FALLBACK_DATA_DIR / "mess_attendance.csv"
 
 CSV_FIELDS = [
     "date", "meal_type", "actual_headcount",
@@ -21,18 +23,27 @@ CSV_FIELDS = [
 COST_PER_PORTION_INR = 60
 
 
-def _ensure_file() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    if not ATTENDANCE_FILE.exists():
-        with open(ATTENDANCE_FILE, "w", newline="") as f:
-            csv.DictWriter(f, fieldnames=CSV_FIELDS).writeheader()
+def _ensure_file() -> Path:
+    for path in (ATTENDANCE_FILE, FALLBACK_ATTENDANCE_FILE):
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                with open(path, "w", newline="") as f:
+                    csv.DictWriter(f, fieldnames=CSV_FIELDS).writeheader()
+            else:
+                with open(path, "a", newline=""):
+                    pass
+            return path
+        except PermissionError:
+            continue
+    raise PermissionError("No writable attendance CSV location found")
 
 
 def load_all_logs() -> list[StudentLog]:
     """Read all records from CSV and return as StudentLog objects."""
-    _ensure_file()
+    attendance_file = _ensure_file()
     logs: list[StudentLog] = []
-    with open(ATTENDANCE_FILE, newline="") as f:
+    with open(attendance_file, newline="") as f:
         for row in csv.DictReader(f):
             try:
                 logs.append(StudentLog(
@@ -49,8 +60,8 @@ def load_all_logs() -> list[StudentLog]:
 
 def append_log(log: StudentLog) -> None:
     """Append a single StudentLog to the CSV."""
-    _ensure_file()
-    with open(ATTENDANCE_FILE, "a", newline="") as f:
+    attendance_file = _ensure_file()
+    with open(attendance_file, "a", newline="") as f:
         csv.DictWriter(f, fieldnames=CSV_FIELDS).writerow(log.to_dict())
 
 
@@ -63,12 +74,12 @@ def log_exists(log_date: date, meal_type: MealType) -> bool:
 
 def delete_log(log_date: date, meal_type: MealType) -> bool:
     """Remove a specific entry. Returns True if deleted."""
-    _ensure_file()
+    attendance_file = _ensure_file()
     logs = load_all_logs()
     filtered = [l for l in logs if not (l.log_date == log_date and l.meal_type == meal_type)]
     if len(filtered) == len(logs):
         return False
-    with open(ATTENDANCE_FILE, "w", newline="") as f:
+    with open(attendance_file, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=CSV_FIELDS)
         w.writeheader()
         for l in filtered:

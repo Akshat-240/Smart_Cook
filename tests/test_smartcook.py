@@ -206,6 +206,17 @@ class TestFlaskAPI:
         assert "event_flag" in data
         assert data["confidence_interval"] == {"low": 320, "high": 365}
 
+    def test_predict_route_valid(self):
+        r = self.client.get("/predict?date=2026-06-10&meal=Dinner")
+        assert r.status_code == 200
+        data = r.get_json()
+        assert data["predicted_headcount"] == 342
+        assert data["meal_type"] == "Dinner"
+
+    def test_predict_route_missing_date(self):
+        r = self.client.get("/predict?meal=Dinner")
+        assert r.status_code == 400
+
     def test_cooking_plan_auto_event_flag(self):
         r = self.client.post("/cooking-plan", json={
             "date": "2025-10-21",   # Diwali
@@ -305,6 +316,27 @@ class TestFlaskAPI:
         r = self.client.get("/analytics/savings")
         assert r.status_code == 200
         assert "money_wasted_inr" in r.get_json()
+
+    def test_predict_log_analytics_flow(self):
+        prediction = self.client.get("/predict?date=2030-06-01&meal=Dinner")
+        assert prediction.status_code == 200
+        cooked_for = prediction.get_json()["predicted_headcount"]
+
+        logged = self.client.post("/logs", json={
+            "date": "2030-06-01",
+            "meal_type": "Dinner",
+            "actual_headcount": cooked_for - 12,
+            "cooked_for": cooked_for,
+        })
+        assert logged.status_code == 201
+
+        logs = self.client.get("/logs?meal=Dinner").get_json()
+        assert logs["count"] == 1
+        assert logs["logs"][0]["waste_headcount"] == 12
+
+        savings = self.client.get("/analytics/savings").get_json()
+        assert savings["total_sessions_logged"] == 1
+        assert savings["money_wasted_inr"] == 12 * 60
 
     # Calendar
     def test_calendar_detect_festival(self):

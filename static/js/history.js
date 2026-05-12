@@ -33,7 +33,7 @@ function updateStats() {
   const total = filtered.length;
   const avgWaste = filtered.reduce((s, r) => s + r.wastePct, 0) / (total || 1);
   const totalWasted = filtered.reduce((s, r) => s + r.wasted, 0);
-  const moneyWasted = totalWasted * 346; // ₹346 per kg estimated
+  const moneyWasted = totalWasted * 60;
   const best = Math.min(...filtered.map(r => r.wastePct));
 
   document.getElementById('hSessions').textContent = total;

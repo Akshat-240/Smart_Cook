@@ -1166,7 +1166,10 @@
         function tomorrowISO() {
             const d = new Date();
             d.setDate(d.getDate() + 1);
-            return d.toISOString().slice(0, 10);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
 
         function targetDateISO() {
@@ -1214,9 +1217,35 @@
             };
         }
 
+        function selectedEventOverride() {
+            const field = document.getElementById('eventOverride')
+                || document.querySelector('[name="event_override"]')
+                || document.querySelector('[name="eventOverride"]')
+                || document.querySelector('select[aria-label="Event override"]');
+            if (!field) return '';
+
+            const value = String(field.value || '').trim();
+            if (!value) return '';
+
+            const normalized = value.toLowerCase();
+            if (normalized === 'auto' || normalized === 'default' || normalized === 'none') {
+                return '';
+            }
+
+            return value;
+        }
+
         async function fetchPrediction(meal) {
             const mealName = meal[0].toUpperCase() + meal.slice(1);
-            const res = await fetch(`/predict?date=${targetDateISO()}&meal=${mealName}`);
+            const params = new URLSearchParams({
+                date: targetDateISO(),
+                meal: mealName
+            });
+            const eventOverride = selectedEventOverride();
+            if (eventOverride) {
+                params.set('event_override', eventOverride);
+            }
+            const res = await fetch(`/predict?${params.toString()}`);
             if (!res.ok) throw new Error(`Prediction failed: ${res.status}`);
             const data = await res.json();
             latestPrediction = data;

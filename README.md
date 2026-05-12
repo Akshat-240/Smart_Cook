@@ -1,7 +1,8 @@
 ```markdown
 # SmartCook
 
-SmartCook is an AI-powered meal planning dashboard for university hostels. It predicts expected meal attendance, recommends cooking quantities, tracks actual attendance, and shows food waste analytics to help reduce overcooking.
+SmartCook is an AI-powered meal planning dashboard for university hostels. It predicts expected meal attendance,
+recommends cooking quantities, tracks actual attendance, and shows food waste analytics to help reduce overcooking.
 
 ## Features
 
